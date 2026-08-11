@@ -10,14 +10,16 @@ from ds_unicamp_applicada_3.repositories import destinos as repo_dst
 from ds_unicamp_applicada_3.repositories import vendas as repo_ven
 
 # ──────────────────────────────────────────────────────────────────
-# Paleta compartilhada
+# Paleta alinhada à interface Gradio em modo escuro
 # ──────────────────────────────────────────────────────────────────
-BG        = "#0D1B2A"
-PANEL     = "#1B4965"
-ACCENT    = "#5FA8D3"
-TEXT      = "#CAE9FF"
-CTA       = "#E9C46A"
-DANGER    = "#C0392B"
+BG        = "#0A0E1D"
+PANEL     = "#1E293A"
+SURFACE   = "#344154"
+SURFACE_HOVER = "#485568"
+ACCENT    = "#0795D2"
+TEXT      = "#F4F6FA"
+MUTED     = "#93A1B5"
+DANGER    = "#C9495E"
 WHITE     = "#FFFFFF"
 
 
@@ -28,47 +30,47 @@ def _apply_style(root: tk.Tk) -> None:
     style.configure("TFrame",            background=PANEL)
     style.configure("TNotebook",         background=BG,    borderwidth=0)
     style.configure("TNotebook.Tab",     background=BG,    foreground=TEXT,
-                                         padding=[12, 6],  font=("Inter", 11))
-    style.map("TNotebook.Tab",           background=[("selected", PANEL)],
-                                         foreground=[("selected", CTA)])
+                                         padding=[16, 9],  font=("Inter", 12))
+    style.map("TNotebook.Tab",           background=[("selected", BG)],
+                                         foreground=[("selected", ACCENT)])
 
     style.configure("TLabel",            background=PANEL, foreground=TEXT,
                                          font=("Inter", 11))
-    style.configure("Header.TLabel",     background=BG,    foreground=CTA,
-                                         font=("Inter", 13, "bold"))
+    style.configure("Header.TLabel",     background=BG,    foreground=TEXT,
+                                         font=("Inter", 20, "bold"))
     style.configure("Status.TLabel",     background=PANEL, foreground=ACCENT,
                                          font=("Inter", 11, "italic"))
-    style.configure("StatusErr.TLabel",  background=PANEL, foreground=CTA,
+    style.configure("StatusErr.TLabel",  background=PANEL, foreground="#FFB4BF",
                                          font=("Inter", 11, "italic"))
 
-    style.configure("TEntry",            fieldbackground=BG, foreground=TEXT,
-                                         insertcolor=TEXT,   borderwidth=1,
+    style.configure("TEntry",            fieldbackground=SURFACE, foreground=TEXT,
+                                         insertcolor=TEXT,   bordercolor=SURFACE,
                                          relief="flat")
-    style.configure("TCombobox",         fieldbackground=BG, foreground=TEXT,
-                                         selectbackground=ACCENT)
+    style.configure("TCombobox",         fieldbackground=SURFACE, foreground=TEXT,
+                                         selectbackground=ACCENT, arrowcolor=TEXT)
 
-    style.configure("Primary.TButton",   background=CTA,    foreground=BG,
+    style.configure("Primary.TButton",   background=ACCENT, foreground=WHITE,
                                          font=("Inter", 11, "bold"), relief="flat",
-                                         padding=[8, 6])
-    style.map("Primary.TButton",         background=[("active", "#d4b05a")])
+                                         padding=[10, 8])
+    style.map("Primary.TButton",         background=[("active", "#0AA7EA")])
 
-    style.configure("Secondary.TButton", background=PANEL,  foreground=TEXT,
+    style.configure("Secondary.TButton", background=SURFACE_HOVER, foreground=TEXT,
                                          font=("Inter", 11), relief="flat",
-                                         padding=[8, 6])
-    style.map("Secondary.TButton",       background=[("active", ACCENT)])
+                                         padding=[10, 8])
+    style.map("Secondary.TButton",       background=[("active", "#5A687B")])
 
     style.configure("Danger.TButton",    background=DANGER, foreground=WHITE,
                                          font=("Inter", 11, "bold"), relief="flat",
                                          padding=[8, 6])
-    style.map("Danger.TButton",          background=[("active", "#a93226")])
+    style.map("Danger.TButton",          background=[("active", "#AE3B4E")])
 
-    style.configure("Treeview",          background=BG,     foreground=TEXT,
-                                         fieldbackground=BG, rowheight=28,
-                                         font=("Courier New", 10))
-    style.configure("Treeview.Heading",  background=PANEL,  foreground=CTA,
+    style.configure("Treeview",          background="#0F1629", foreground=TEXT,
+                                         fieldbackground="#0F1629", rowheight=34,
+                                         font=("JetBrains Mono", 11), borderwidth=0)
+    style.configure("Treeview.Heading",  background="#0F1629", foreground=TEXT,
                                          font=("Inter", 11, "bold"), relief="flat")
     style.map("Treeview",                background=[("selected", ACCENT)],
-                                         foreground=[("selected", BG)])
+                                         foreground=[("selected", WHITE)])
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -540,25 +542,29 @@ def _set_entry(entry: ttk.Entry, value: str) -> None:
 def main() -> None:
     root = tk.Tk()
     root.title("Agência de Viagens — Painel Administrativo")
-    root.geometry("860x620")
+    root.geometry("1040x700")
     root.configure(bg=BG)
 
     _apply_style(root)
 
-    # Header
-    header = tk.Label(
-        root, text="Painel Administrativo",
-        bg=BG, fg=CTA, font=("Inter", 13, "bold"),
-        pady=12,
-    )
+    # Cabeçalho com a mesma hierarquia da aplicação web.
+    header = tk.Frame(root, bg=BG, padx=20, pady=16)
     header.pack(fill="x")
+    tk.Label(
+        header, text="✈ Agência de Viagens",
+        bg=BG, fg=TEXT, font=("Inter", 22, "bold"), anchor="w",
+    ).pack(fill="x")
+    tk.Label(
+        header, text="Portal Administrativo · DB Relacional",
+        bg=BG, fg=TEXT, font=("Inter", 12, "italic"), anchor="w", pady=7,
+    ).pack(fill="x")
 
     notebook = ttk.Notebook(root)
-    notebook.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+    notebook.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
-    notebook.add(AbaClientes(notebook), text="  Clientes  ")
-    notebook.add(AbaDestinos(notebook), text="  Destinos  ")
-    notebook.add(AbaVendas(notebook),   text="   Vendas   ")
+    notebook.add(AbaClientes(notebook), text="  👤 Clientes  ")
+    notebook.add(AbaDestinos(notebook), text="  📍 Destinos  ")
+    notebook.add(AbaVendas(notebook),   text="  🎫 Vendas  ")
 
     root.mainloop()
 

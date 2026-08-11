@@ -39,24 +39,27 @@ Construir uma aplicação desktop com Tkinter que conecta ao mesmo Supabase da a
 
 ## Design Visual
 
-> Aplicado seguindo a skill `frontend-design`. Tkinter não suporta CSS — as decisões de cor e tipografia são aplicadas via `ttk.Style` e opções de widget. A paleta é compartilhada com o Gradio para coerência sistêmica entre as duas interfaces do mesmo produto.
+> A referência visual é a aplicação Gradio em modo escuro. Tkinter não suporta CSS; as decisões são aplicadas via `ttk.Style` e opções de widget. A versão desktop preserva a linguagem visual, mas mantém o CRUD administrativo e as limitações nativas do toolkit.
 
 ### Paleta de Cores
 
 | Nome | Hex | Uso no Tkinter |
 |---|---|---|
-| Azul Noite | `#0D1B2A` | `background` da janela principal, fundo dos `Entry` |
-| Azul Oceano | `#1B4965` | Fundo dos `ttk.Frame` de aba, fundo do `ttk.Notebook` |
-| Azul Céu | `#5FA8D3` | `selectbackground` da Treeview, highlight de botão hover |
-| Névoa de Altitude | `#CAE9FF` | `foreground` (texto) de Labels e Treeview |
-| Âmbar Cartão de Embarque | `#E9C46A` | `background` dos botões primários (Cadastrar, Atualizar) |
-| Vermelho de Alerta | `#C0392B` | `background` do botão Excluir |
+| Fundo profundo | `#0A0E1D` | Janela principal, notebook e abas inativas |
+| Painel | `#1E293A` | Fundo das abas e áreas de formulário/listagem |
+| Superfície | `#344154` | Campos de entrada, botões secundários e barras de seção |
+| Superfície elevada | `#485568` | Hover e áreas secundárias elevadas |
+| Azul de ação | `#0795D2` | Botão principal, aba ativa e seleção da tabela |
+| Texto principal | `#F4F6FA` | Títulos, labels, tabs e dados da tabela |
+| Texto secundário | `#93A1B5` | Textos auxiliares e estados discretos |
+| Alerta | `#C9495E` | Botão de exclusão |
 
 ### Tipografia
 
 - **Labels e botões:** `('Inter', 11)` — ou `('Segoe UI', 11)` no Windows como fallback system sans-serif.
-- **Título da janela:** `('Inter', 13, 'bold')` no `Label` de cabeçalho.
-- **Treeview (dados):** `('Courier New', 10)` — monoespaçado para alinhar colunas de dados.
+- **Título da janela:** `('Inter', 22, 'bold')`, alinhado à esquerda, com ícone de avião.
+- **Subtítulo:** `('Inter', 12, 'italic')`, abaixo do título.
+- **Treeview (dados):** `('JetBrains Mono', 11)`, com fallback do sistema, para aproximar a tabela web.
 - **Mensagens de status:** `('Inter', 11, 'italic')`.
 
 ### Configuração via ttk.Style
@@ -65,38 +68,38 @@ Construir uma aplicação desktop com Tkinter que conecta ao mesmo Supabase da a
 style = ttk.Style()
 style.theme_use('clam')               # base mais controlável que 'default'
 
-style.configure('TFrame',            background='#1B4965')
-style.configure('TNotebook',         background='#0D1B2A', borderwidth=0)
-style.configure('TNotebook.Tab',     background='#0D1B2A', foreground='#CAE9FF',
-                                     padding=[12, 6], font=('Inter', 11))
-style.map('TNotebook.Tab',           background=[('selected', '#1B4965')],
-                                     foreground=[('selected', '#E9C46A')])
+style.configure('TFrame',            background='#1E293A')
+style.configure('TNotebook',         background='#0A0E1D', borderwidth=0)
+style.configure('TNotebook.Tab',     background='#0A0E1D', foreground='#F4F6FA',
+                                     padding=[16, 9], font=('Inter', 12))
+style.map('TNotebook.Tab',           background=[('selected', '#0A0E1D')],
+                                     foreground=[('selected', '#0795D2')])
 
-style.configure('TLabel',            background='#1B4965', foreground='#CAE9FF',
+style.configure('TLabel',            background='#1E293A', foreground='#F4F6FA',
                                      font=('Inter', 11))
-style.configure('TEntry',            fieldbackground='#0D1B2A', foreground='#CAE9FF',
-                                     insertcolor='#CAE9FF', borderwidth=1, relief='flat')
-style.configure('TCombobox',         fieldbackground='#0D1B2A', foreground='#CAE9FF')
+style.configure('TEntry',            fieldbackground='#344154', foreground='#F4F6FA',
+                                     insertcolor='#F4F6FA', borderwidth=0, relief='flat')
+style.configure('TCombobox',         fieldbackground='#344154', foreground='#F4F6FA')
 
-style.configure('Primary.TButton',   background='#E9C46A', foreground='#0D1B2A',
+style.configure('Primary.TButton',   background='#0795D2', foreground='#FFFFFF',
                                      font=('Inter', 11, 'bold'), relief='flat', padding=[8, 6])
-style.map('Primary.TButton',         background=[('active', '#d4b05a')])
+style.map('Primary.TButton',         background=[('active', '#0AA7EA')])
 
-style.configure('Secondary.TButton', background='#1B4965', foreground='#CAE9FF',
+style.configure('Secondary.TButton', background='#485568', foreground='#F4F6FA',
                                      font=('Inter', 11), relief='flat', padding=[8, 6])
-style.map('Secondary.TButton',       background=[('active', '#5FA8D3')])
+style.map('Secondary.TButton',       background=[('active', '#5A687B')])
 
-style.configure('Danger.TButton',    background='#C0392B', foreground='#FFFFFF',
+style.configure('Danger.TButton',    background='#C9495E', foreground='#FFFFFF',
                                      font=('Inter', 11, 'bold'), relief='flat', padding=[8, 6])
-style.map('Danger.TButton',          background=[('active', '#a93226')])
+style.map('Danger.TButton',          background=[('active', '#AE3B4E')])
 
-style.configure('Treeview',          background='#0D1B2A', foreground='#CAE9FF',
-                                     fieldbackground='#0D1B2A', rowheight=28,
-                                     font=('Courier New', 10))
-style.configure('Treeview.Heading',  background='#1B4965', foreground='#E9C46A',
+style.configure('Treeview',          background='#0F1629', foreground='#F4F6FA',
+                                     fieldbackground='#0F1629', rowheight=34,
+                                     font=('JetBrains Mono', 11))
+style.configure('Treeview.Heading',  background='#0F1629', foreground='#F4F6FA',
                                      font=('Inter', 11, 'bold'), relief='flat')
-style.map('Treeview',                background=[('selected', '#5FA8D3')],
-                                     foreground=[('selected', '#0D1B2A')])
+style.map('Treeview',                background=[('selected', '#0795D2')],
+                                     foreground=[('selected', '#FFFFFF')])
 ```
 
 ### Wireframe — Janela Principal
@@ -105,20 +108,21 @@ style.map('Treeview',                background=[('selected', '#5FA8D3')],
 ┌──────────────────────────────────────────────────────────────────┐
 │  ● ○ ○   Agência de Viagens — Painel Administrativo           │  ← title da janela
 ├──────────────────────────────────────────────────────────────────┤
-│  BARRA HEADER  bg #0D1B2A, padding 12px                         │
-│  Label: "Painel Administrativo"  font bold 13px #E9C46A         │
+│  BARRA HEADER  bg #0A0E1D, padding 16px 20px                    │
+│  "✈ Agência de Viagens"  font bold 22px #F4F6FA                │
+│  "Portal Administrativo · DB Relacional"  italic 12px          │
 ├──────────────────────────────────────────────────────────────────┤
 │  ttk.Notebook                                                   │
-│  [  Clientes  ]  [  Destinos  ]  [  Vendas  ]                   │
-│  ↓ aba ativa: text #E9C46A, bg #1B4965                         │
-│  ↓ aba inativa: text #CAE9FF opacity, bg #0D1B2A               │
+│  [ 👤 Clientes ]  [ 📍 Destinos ]  [ 🎫 Vendas ]                │
+│  ↓ aba ativa: texto #0795D2, bg #0A0E1D                        │
+│  ↓ aba inativa: texto #F4F6FA, bg #0A0E1D                       │
 ├──────────────────────────────────────────────────────────────────┤
-│  CONTEÚDO DA ABA (ttk.Frame bg #1B4965, padx=16 pady=12)        │
+│  CONTEÚDO DA ABA (ttk.Frame bg #1E293A, padx=16 pady=12)        │
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │  FORMULÁRIO (grid 2 colunas: labels + entries)                │  │
 │  │  + BARRA DE BOTÕES (Cadastrar | Atualizar | Excluir | Limpar)│  │
 │  └──────────────────────────────────────────────────────────────┘  │
-│  LABEL DE STATUS  font italic 11px  |│  ← sucesso: #5FA8D3 / erro: #E9C46A  │
+│  LABEL DE STATUS  font italic 11px  |│  ← sucesso: #0795D2 / erro: #FFB4BF  │
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │  ttk.Treeview (expand=True, fill=BOTH) + Scrollbar vertical │  │
 │  │  [  Atualizar Lista  ]  botão secundário abaixo da Treeview  │  │
@@ -145,10 +149,10 @@ BARRA DE BOTÕES (pack, side=LEFT, padx=4)
 STATUS LABEL
 ──────────────────────────────────
 • Vazio até a primeira ação
-• Sucesso: "✓ Cliente cadastrado com sucesso."   fg=#5FA8D3
-• Sucesso update: "✓ Dados atualizados."          fg=#5FA8D3
-• Sucesso delete: "✓ Cliente removido."           fg=#5FA8D3
-• Erro: "✗ Erro: [mensagem]"                      fg=#E9C46A
+• Sucesso: "✓ Cliente cadastrado com sucesso."   fg=#0795D2
+• Sucesso update: "✓ Dados atualizados."          fg=#0795D2
+• Sucesso delete: "✓ Cliente removido."           fg=#0795D2
+• Erro: "✗ Erro: [mensagem]"                      fg=#FFB4BF
 
 TREEVIEW  (columns=["ID", "Nome", "E-mail"], show='headings')
 ──────────────────────────────────
