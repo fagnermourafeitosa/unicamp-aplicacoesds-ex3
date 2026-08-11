@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Callable
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -79,9 +80,10 @@ def _apply_style(root: tk.Tk) -> None:
 # ──────────────────────────────────────────────────────────────────
 
 class AbaClientes(ttk.Frame):
-    def __init__(self, parent: ttk.Notebook) -> None:
+    def __init__(self, parent: ttk.Notebook, on_change: Callable[[], None] | None = None) -> None:
         super().__init__(parent, padding=(16, 12))
         self._selected_id: int | None = None
+        self._on_change = on_change
         self._build()
         self._load()
 
@@ -173,6 +175,7 @@ class AbaClientes(ttk.Frame):
             self._set_status("✓ Cliente cadastrado com sucesso.", ok=True)
             self._limpar()
             self._load()
+            self._notificar_alteracao()
         except Exception as exc:
             self._set_status(f"✗ Erro: {exc}", ok=False)
 
@@ -187,21 +190,26 @@ class AbaClientes(ttk.Frame):
             repo_cli.atualizar_cliente(self._selected_id, nome, email)
             self._set_status("✓ Dados atualizados.", ok=True)
             self._load()
+            self._notificar_alteracao()
         except Exception as exc:
             self._set_status(f"✗ Erro: {exc}", ok=False)
 
     def _excluir(self) -> None:
         if self._selected_id is None:
             return
+        vendas_removidas = _contar_vendas_vinculadas(cliente_id=self._selected_id)
+        aviso_cascata = _aviso_vendas_em_cascata(vendas_removidas)
         if messagebox.askyesno(
             "Confirmar exclusão",
-            "Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.",
+            "Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita."
+            f"{aviso_cascata}",
         ):
             try:
                 repo_cli.excluir_cliente(self._selected_id)
                 self._set_status("✓ Registro removido.", ok=True)
                 self._limpar()
                 self._load()
+                self._notificar_alteracao()
             except Exception as exc:
                 self._set_status(f"✗ Erro: {exc}", ok=False)
 
@@ -226,6 +234,10 @@ class AbaClientes(ttk.Frame):
             return None
         return nome, email
 
+    def _notificar_alteracao(self) -> None:
+        if self._on_change is not None:
+            self._on_change()
+
     def _set_status(self, msg: str, *, ok: bool) -> None:
         style = "Status.TLabel" if ok else "StatusErr.TLabel"
         self._lbl_status.configure(text=msg, style=style)
@@ -236,9 +248,10 @@ class AbaClientes(ttk.Frame):
 # ──────────────────────────────────────────────────────────────────
 
 class AbaDestinos(ttk.Frame):
-    def __init__(self, parent: ttk.Notebook) -> None:
+    def __init__(self, parent: ttk.Notebook, on_change: Callable[[], None] | None = None) -> None:
         super().__init__(parent, padding=(16, 12))
         self._selected_id: int | None = None
+        self._on_change = on_change
         self._build()
         self._load()
 
@@ -318,6 +331,7 @@ class AbaDestinos(ttk.Frame):
             self._set_status("✓ Destino cadastrado com sucesso.", ok=True)
             self._limpar()
             self._load()
+            self._notificar_alteracao()
         except Exception as exc:
             self._set_status(f"✗ Erro: {exc}", ok=False)
 
@@ -332,21 +346,26 @@ class AbaDestinos(ttk.Frame):
             repo_dst.atualizar_destino(self._selected_id, nome, pais, preco)
             self._set_status("✓ Dados atualizados.", ok=True)
             self._load()
+            self._notificar_alteracao()
         except Exception as exc:
             self._set_status(f"✗ Erro: {exc}", ok=False)
 
     def _excluir(self) -> None:
         if self._selected_id is None:
             return
+        vendas_removidas = _contar_vendas_vinculadas(destino_id=self._selected_id)
+        aviso_cascata = _aviso_vendas_em_cascata(vendas_removidas)
         if messagebox.askyesno(
             "Confirmar exclusão",
-            "Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.",
+            "Tem certeza que deseja excluir este destino? Esta ação não pode ser desfeita."
+            f"{aviso_cascata}",
         ):
             try:
                 repo_dst.excluir_destino(self._selected_id)
                 self._set_status("✓ Registro removido.", ok=True)
                 self._limpar()
                 self._load()
+                self._notificar_alteracao()
             except Exception as exc:
                 self._set_status(f"✗ Erro: {exc}", ok=False)
 
@@ -381,6 +400,10 @@ class AbaDestinos(ttk.Frame):
             self._set_status("⚠ O preço não pode ser negativo.", ok=False)
             return None
         return nome, pais, preco
+
+    def _notificar_alteracao(self) -> None:
+        if self._on_change is not None:
+            self._on_change()
 
     def _set_status(self, msg: str, *, ok: bool) -> None:
         style = "Status.TLabel" if ok else "StatusErr.TLabel"
@@ -589,6 +612,22 @@ class AbaVendas(ttk.Frame):
 # Utilitário
 # ──────────────────────────────────────────────────────────────────
 
+def _contar_vendas_vinculadas(*, cliente_id: int | None = None, destino_id: int | None = None) -> int:
+    """Conta vendas que o banco removerá por cascata ao apagar um registro pai."""
+    return sum(
+        (cliente_id is not None and venda.get("cliente_id") == cliente_id)
+        or (destino_id is not None and venda.get("destino_id") == destino_id)
+        for venda in repo_ven.listar_vendas()
+    )
+
+
+def _aviso_vendas_em_cascata(quantidade: int) -> str:
+    if not quantidade:
+        return ""
+    rotulo = "venda vinculada será removida" if quantidade == 1 else "vendas vinculadas serão removidas"
+    return f"\n\nAtenção: {quantidade} {rotulo} automaticamente."
+
+
 def _set_entry(entry: ttk.Entry, value: str) -> None:
     """Define o valor de um Entry independentemente do seu estado."""
     state = str(entry.cget("state"))
@@ -625,9 +664,19 @@ def main() -> None:
     notebook = ttk.Notebook(root)
     notebook.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
-    notebook.add(AbaClientes(notebook), text="  👤 Clientes  ")
-    notebook.add(AbaDestinos(notebook), text="  📍 Destinos  ")
-    notebook.add(AbaVendas(notebook),   text="  🎫 Vendas  ")
+    vendas = AbaVendas(notebook)
+
+    def atualizar_vendas_relacionadas() -> None:
+        """Sincroniza vendas e escolhas após mudanças em clientes ou destinos."""
+        vendas._load_combos()
+        vendas._load()
+
+    clientes = AbaClientes(notebook, on_change=atualizar_vendas_relacionadas)
+    destinos = AbaDestinos(notebook, on_change=atualizar_vendas_relacionadas)
+
+    notebook.add(clientes, text="  👤 Clientes  ")
+    notebook.add(destinos, text="  📍 Destinos  ")
+    notebook.add(vendas,   text="  🎫 Vendas  ")
 
     root.mainloop()
 

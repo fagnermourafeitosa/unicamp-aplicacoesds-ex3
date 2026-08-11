@@ -34,6 +34,7 @@ Construir uma aplicação desktop com Tkinter que conecta ao mesmo Supabase da a
 - As abas de Vendas usarão `ttk.Combobox` (em vez de `ttk.Entry` puro) para os campos `cliente_id` e `destino_id`, exibindo nomes e carregando IDs internamente. O formato exibido no Combobox será `"<id> – <nome>"` (ex: `"1 – Maria Silva"`); a extração do ID numérico na submissão do formulário é feita via `int(valor.split(' – ')[0])`. Essa convenção deve ser consistente entre todos os Comboboxes da aplicação.
 - As funções de callback chamarão diretamente os repositórios da Spec 02 (sem lógica de negócio própria).
 - Antes de criar ou atualizar, a interface valida os campos obrigatórios e mostra um aviso no label de status, sem enviar dados incompletos ao banco. Clientes exigem nome e e-mail; destinos exigem nome, país e preço numérico não negativo; vendas exigem cliente, destino e data válida no formato `AAAA-MM-DD`.
+- A exclusão de cliente ou destino consulta as vendas vinculadas e informa, no diálogo de confirmação, quantas serão removidas pelo `ON DELETE CASCADE`. Após qualquer alteração de cliente ou destino, a aba Vendas atualiza automaticamente a tabela e as opções dos Comboboxes.
 - O estado do registro selecionado (ID) será mantido em uma variável de instância da classe ou em uma variável de closure do frame.
 - A aplicação será iniciada com `root.mainloop()`.
 - Tkinter é biblioteca padrão do Python — nenhuma dependência adicional necessária.
@@ -221,7 +222,7 @@ TREEVIEW  (columns=["ID", "Cliente", "Destino", "Data"])
 | Botão excluir (todas as abas) | "Excluir" |
 | Botão limpar | "Limpar Campos" |
 | Botão reload da Treeview | "Atualizar Lista" |
-| Diálogo de confirmação | "Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita." |
+| Diálogo de confirmação | Informa a exclusão definitiva e, quando houver dependências, a quantidade de vendas removidas automaticamente. |
 | Sucesso — cadastro | "✓ [Entidade] cadastrado(a) com sucesso." |
 | Sucesso — atualização | "✓ Dados atualizados." |
 | Sucesso — exclusão | "✓ Registro removido." |

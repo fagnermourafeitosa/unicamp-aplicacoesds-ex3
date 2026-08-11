@@ -27,7 +27,7 @@ def listar_vendas() -> list[dict]:
     client = get_supabase_client()
     response = (
         client.table("vendas")
-        .select("id, data_viagem, clientes(nome), destinos(nome)")
+        .select("id, cliente_id, destino_id, data_viagem, clientes(nome), destinos(nome)")
         .order("id", desc=True)
         .execute()
     )
