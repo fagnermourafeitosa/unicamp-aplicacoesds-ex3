@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -163,8 +164,10 @@ class AbaClientes(ttk.Frame):
         self._btn_excluir.config(state="normal")
 
     def _criar(self) -> None:
-        nome  = self._entry_nome.get().strip()
-        email = self._entry_email.get().strip()
+        dados = self._validar_campos()
+        if dados is None:
+            return
+        nome, email = dados
         try:
             repo_cli.criar_cliente(nome, email)
             self._set_status("✓ Cliente cadastrado com sucesso.", ok=True)
@@ -176,8 +179,10 @@ class AbaClientes(ttk.Frame):
     def _atualizar(self) -> None:
         if self._selected_id is None:
             return
-        nome  = self._entry_nome.get().strip()
-        email = self._entry_email.get().strip()
+        dados = self._validar_campos()
+        if dados is None:
+            return
+        nome, email = dados
         try:
             repo_cli.atualizar_cliente(self._selected_id, nome, email)
             self._set_status("✓ Dados atualizados.", ok=True)
@@ -209,6 +214,17 @@ class AbaClientes(ttk.Frame):
         self._btn_excluir.config(state="disabled")
         for item in self._tree.selection():
             self._tree.selection_remove(item)
+
+    def _validar_campos(self) -> tuple[str, str] | None:
+        nome = self._entry_nome.get().strip()
+        email = self._entry_email.get().strip()
+        if not nome:
+            self._set_status("⚠ Informe o nome do cliente.", ok=False)
+            return None
+        if not email:
+            self._set_status("⚠ Informe o e-mail do cliente.", ok=False)
+            return None
+        return nome, email
 
     def _set_status(self, msg: str, *, ok: bool) -> None:
         style = "Status.TLabel" if ok else "StatusErr.TLabel"
@@ -293,10 +309,11 @@ class AbaDestinos(ttk.Frame):
         self._btn_excluir.config(state="normal")
 
     def _criar(self) -> None:
-        nome  = self._entries["Nome"].get().strip()
-        pais  = self._entries["País"].get().strip()
+        dados = self._validar_campos()
+        if dados is None:
+            return
+        nome, pais, preco = dados
         try:
-            preco = float(self._entries["Preço"].get().strip().replace(",", "."))
             repo_dst.criar_destino(nome, pais, preco)
             self._set_status("✓ Destino cadastrado com sucesso.", ok=True)
             self._limpar()
@@ -307,10 +324,11 @@ class AbaDestinos(ttk.Frame):
     def _atualizar(self) -> None:
         if self._selected_id is None:
             return
-        nome = self._entries["Nome"].get().strip()
-        pais = self._entries["País"].get().strip()
+        dados = self._validar_campos()
+        if dados is None:
+            return
+        nome, pais, preco = dados
         try:
-            preco = float(self._entries["Preço"].get().strip().replace(",", "."))
             repo_dst.atualizar_destino(self._selected_id, nome, pais, preco)
             self._set_status("✓ Dados atualizados.", ok=True)
             self._load()
@@ -340,6 +358,29 @@ class AbaDestinos(ttk.Frame):
         self._btn_excluir.config(state="disabled")
         for item in self._tree.selection():
             self._tree.selection_remove(item)
+
+    def _validar_campos(self) -> tuple[str, str, float] | None:
+        nome = self._entries["Nome"].get().strip()
+        pais = self._entries["País"].get().strip()
+        preco_texto = self._entries["Preço"].get().strip().replace(",", ".")
+        if not nome:
+            self._set_status("⚠ Informe o nome do destino.", ok=False)
+            return None
+        if not pais:
+            self._set_status("⚠ Informe o país do destino.", ok=False)
+            return None
+        if not preco_texto:
+            self._set_status("⚠ Informe o preço do pacote.", ok=False)
+            return None
+        try:
+            preco = float(preco_texto)
+        except ValueError:
+            self._set_status("⚠ Informe um preço numérico válido.", ok=False)
+            return None
+        if preco < 0:
+            self._set_status("⚠ O preço não pode ser negativo.", ok=False)
+            return None
+        return nome, pais, preco
 
     def _set_status(self, msg: str, *, ok: bool) -> None:
         style = "Status.TLabel" if ok else "StatusErr.TLabel"
@@ -467,10 +508,11 @@ class AbaVendas(ttk.Frame):
         return int(combobox.get().split(" – ")[0])
 
     def _criar(self) -> None:
+        dados = self._validar_campos()
+        if dados is None:
+            return
+        cli_id, dst_id, data = dados
         try:
-            cli_id = self._extract_id(self._cb_cliente)
-            dst_id = self._extract_id(self._cb_destino)
-            data   = self._entry_data.get().strip()
             repo_ven.criar_venda(cli_id, dst_id, data)
             self._set_status("✓ Venda cadastrada com sucesso.", ok=True)
             self._limpar()
@@ -481,10 +523,11 @@ class AbaVendas(ttk.Frame):
     def _atualizar(self) -> None:
         if self._selected_id is None:
             return
+        dados = self._validar_campos()
+        if dados is None:
+            return
+        cli_id, dst_id, data = dados
         try:
-            cli_id = self._extract_id(self._cb_cliente)
-            dst_id = self._extract_id(self._cb_destino)
-            data   = self._entry_data.get().strip()
             repo_ven.atualizar_venda(self._selected_id, cli_id, dst_id, data)
             self._set_status("✓ Dados atualizados.", ok=True)
             self._load()
@@ -516,6 +559,26 @@ class AbaVendas(ttk.Frame):
         self._btn_excluir.config(state="disabled")
         for item in self._tree.selection():
             self._tree.selection_remove(item)
+
+    def _validar_campos(self) -> tuple[int, int, str] | None:
+        cliente = self._cb_cliente.get().strip()
+        destino = self._cb_destino.get().strip()
+        data = self._entry_data.get().strip()
+        if not cliente:
+            self._set_status("⚠ Selecione um cliente.", ok=False)
+            return None
+        if not destino:
+            self._set_status("⚠ Selecione um destino.", ok=False)
+            return None
+        if not data:
+            self._set_status("⚠ Informe a data da viagem.", ok=False)
+            return None
+        try:
+            datetime.strptime(data, "%Y-%m-%d")
+        except ValueError:
+            self._set_status("⚠ Use a data no formato AAAA-MM-DD.", ok=False)
+            return None
+        return self._extract_id(self._cb_cliente), self._extract_id(self._cb_destino), data
 
     def _set_status(self, msg: str, *, ok: bool) -> None:
         style = "Status.TLabel" if ok else "StatusErr.TLabel"
