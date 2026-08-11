@@ -43,6 +43,8 @@ Interface CRUD voltada para administração completa e gerenciamento do sistema 
 
 ```
 ds-unicamp-applicada-3/
+├── .claude/
+│   └── napkin.md                 # Runbook de orientações recorrentes do projeto
 ├── .env                          # Credenciais locais (não commitado)
 ├── .env.example                  # Template de variáveis de ambiente
 ├── pyproject.toml                # Dependências e metadados do projeto (uv)
