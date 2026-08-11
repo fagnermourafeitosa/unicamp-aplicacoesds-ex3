@@ -37,7 +37,43 @@ Interface CRUD voltada para administração completa e gerenciamento do sistema 
 - **Atualizar (Update)**: Carregamento de dados para edição e atualização na base.
 - **Excluir (Delete)**: Remoção de registros do banco, com aviso de confirmação.
 
-*Nota: O layout Tkinter utilizará abas (`Notebook`) para separar a gerência das entidades.*
+---
+
+## 📁 Estrutura do Projeto
+
+```
+ds-unicamp-applicada-3/
+├── .env                          # Credenciais locais (não commitado)
+├── .env.example                  # Template de variáveis de ambiente
+├── pyproject.toml                # Dependências e metadados do projeto (uv)
+├── AGENTS.md                     # Regras de comportamento para agentes de IA
+│
+├── specs/                        # Especificações técnicas
+│   ├── exercise.md               # Enunciado original do exercício
+│   ├── 01-infra-database.md      # Spec: infraestrutura e conexões de banco
+│   ├── 02-repository-layer.md    # Spec: camada de repositório (CRUD)
+│   ├── 03-gradio-web-app.md      # Spec: aplicação web Gradio
+│   ├── 04-tkinter-admin-app.md   # Spec: interface desktop Tkinter
+│   └── schema.sql                # DDL para criação das tabelas no Supabase
+│
+├── scripts/
+│   ├── up-supabase.sh            # Cria as tabelas no Supabase
+│   ├── run-gradio.sh             # Inicia a aplicação web
+│   └── run-tkinter.sh            # Inicia o painel desktop
+│
+└── src/ds_unicamp_applicada_3/
+    ├── __init__.py
+    ├── config.py                 # Carregamento de variáveis de ambiente
+    ├── database.py               # Singletons de conexão Supabase + MongoDB
+    ├── app_gradio.py             # Aplicação web (Gradio)
+    ├── app_tkinter.py            # Aplicação desktop (Tkinter)
+    └── repositories/
+        ├── __init__.py
+        ├── clientes.py           # CRUD clientes → Supabase
+        ├── destinos.py           # CRUD destinos → Supabase
+        ├── vendas.py             # CRUD vendas → Supabase (com resolução de nomes FK)
+        └── comentarios.py        # Create + Read comentários → MongoDB
+```
 
 ---
 
@@ -48,12 +84,43 @@ Interface CRUD voltada para administração completa e gerenciamento do sistema 
 - **Supabase / PostgreSQL** (Banco Relacional)
 - **MongoDB Atlas** (Banco NoSQL Documental)
 
+---
+
 ## 🚀 Como Executar
 
-1. Certifique-se de ativar o ambiente virtual:
-   ```bash
-   source .venv/bin/activate
-   ```
-2. Instale as dependências (a serem definidas no projeto).
-3. Preencha o arquivo `.env` baseado no `.env.example` com as credenciais do Supabase e MongoDB Atlas fornecidas no repositório.
-4. Rode a aplicação desejada (o comando exato de inicialização será definido).
+### 1. Variáveis de ambiente
+
+Copie `.env.example` para `.env` e preencha com suas credenciais:
+
+```bash
+cp .env.example .env
+```
+
+### 2. Instale as dependências
+
+```bash
+~/.local/bin/uv sync
+```
+
+### 3. Crie as tabelas no Supabase
+
+Execute o script abaixo (requer `psql` instalado e as variáveis de ambiente configuradas no `.env`):
+
+```bash
+bash scripts/up-supabase.sh
+```
+
+Ou execute manualmente o SQL em `specs/schema.sql` pelo **Supabase Dashboard → SQL Editor**.
+
+### 4. Execute a aplicação desejada
+
+**Aplicação Web (Gradio):**
+```bash
+bash scripts/run-gradio.sh
+```
+Acesse em `http://localhost:7860`.
+
+**Aplicação Desktop (Tkinter):**
+```bash
+bash scripts/run-tkinter.sh
+```
