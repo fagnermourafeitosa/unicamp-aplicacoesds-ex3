@@ -1,322 +1,424 @@
-"""Aplicação web Gradio — Agência de Viagens."""
+"""Aplicação web Gradio — Agência de Viagens (DB Relacional + NoSQL)."""
 
 from __future__ import annotations
 
+from datetime import date
+from uuid import uuid4
 import gradio as gr
+import pandas as pd
 
 from ds_unicamp_applicada_3.repositories import clientes as repo_cli
 from ds_unicamp_applicada_3.repositories import destinos as repo_dst
 from ds_unicamp_applicada_3.repositories import vendas as repo_ven
 from ds_unicamp_applicada_3.repositories import comentarios as repo_com
 
-# ──────────────────────────────────────────────────────────────────
-# CSS customizado (paleta "cartão de embarque")
-# ──────────────────────────────────────────────────────────────────
-CUSTOM_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:ital,wght@1,700&family=JetBrains+Mono&display=swap');
-
-:root {
-  --color-bg:        #0D1B2A;
-  --color-panel:     #1B4965;
-  --color-accent:    #5FA8D3;
-  --color-text:      #CAE9FF;
-  --color-cta:       #E9C46A;
-  --color-cta-text:  #0D1B2A;
-  --font-display:    'Playfair Display', Georgia, serif;
-  --font-body:       'Inter', system-ui, sans-serif;
-  --font-data:       'JetBrains Mono', 'Courier New', monospace;
-  --radius-sm:       4px;
-  --radius-md:       8px;
-  --space-sm:        8px;
-  --space-md:        16px;
-  --space-lg:        32px;
-}
-
-body, .gradio-container {
-  background-color: var(--color-bg) !important;
-  font-family: var(--font-body) !important;
-  color: var(--color-text) !important;
-}
-
-/* ── faixa topo ── */
-#header-strip {
-  background: var(--color-bg);
-  padding: 24px 40px;
-  text-align: center;
-  letter-spacing: 4px;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 1.5rem;
-  color: var(--color-cta);
-  border-bottom: 1px solid var(--color-panel);
-  margin-bottom: 0;
-}
-
-/* ── abas ── */
-.tabs > .tab-nav {
-  background: var(--color-bg) !important;
-  border-bottom: 1px solid var(--color-panel) !important;
-}
-.tabs > .tab-nav button {
-  color: rgba(202,233,255,.6) !important;
-  font-family: var(--font-body) !important;
-  font-size: 0.95rem !important;
-  padding: 10px 20px !important;
-  border-bottom: 2px solid transparent !important;
-}
-.tabs > .tab-nav button.selected {
-  color: var(--color-cta) !important;
-  border-bottom: 2px solid var(--color-cta) !important;
-}
-
-/* ── painel de aba ── */
-.tabitem {
-  background: var(--color-panel) !important;
-  border-radius: var(--radius-md) !important;
-  padding: var(--space-lg) 40px !important;
-}
-
-/* ── labels & inputs ── */
-label span, .label-wrap span {
-  color: var(--color-text) !important;
-  font-size: 13px !important;
-  font-family: var(--font-body) !important;
-}
-input[type=text], input[type=number], textarea, select {
-  background: var(--color-bg) !important;
-  color: var(--color-text) !important;
-  border: 1px solid var(--color-accent) !important;
-  border-radius: var(--radius-sm) !important;
-  font-family: var(--font-body) !important;
-}
-input:focus, textarea:focus {
-  outline: none !important;
-  box-shadow: 0 0 0 2px var(--color-accent) !important;
-}
-
-/* ── botão CTA âmbar ── */
-button.primary, #btn-cad-cliente, #btn-cad-destino, #btn-reg-venda, #btn-enviar-com {
-  background: var(--color-cta) !important;
-  color: var(--color-cta-text) !important;
-  font-weight: 700 !important;
-  border-radius: var(--radius-sm) !important;
-  border: none !important;
-  width: 100% !important;
-}
-button.primary:hover {
-  background: #d4b05a !important;
-}
-
-/* ── botão secundário ── */
-button.secondary, #btn-ver-comentarios {
-  background: transparent !important;
-  color: var(--color-text) !important;
-  border: 1px solid var(--color-accent) !important;
-  border-radius: var(--radius-sm) !important;
-}
-button.secondary:hover {
-  background: var(--color-accent) !important;
-  color: var(--color-bg) !important;
-}
-
-/* ── status ── */
-.status-ok  { color: var(--color-accent) !important; font-size: 14px !important; }
-.status-err { color: var(--color-cta)    !important; font-size: 14px !important; }
-
-/* ── tabela ── */
-.gr-dataframe, .gr-dataframe table {
-  background: var(--color-bg) !important;
-  color: var(--color-text) !important;
-  font-family: var(--font-data) !important;
-  font-size: 13px !important;
-}
-.gr-dataframe thead th {
-  background: var(--color-panel) !important;
-  color: var(--color-cta) !important;
-}
-
-/* ── empty state ── */
-#empty-state {
-  font-family: var(--font-body);
-  font-style: italic;
-  color: rgba(202,233,255,.6);
-  text-align: center;
-  padding: 24px;
-}
-"""
-
 
 # ──────────────────────────────────────────────────────────────────
-# Helpers para popular dropdowns
+# Data helpers & Formatters
 # ──────────────────────────────────────────────────────────────────
 
-def _choices_clientes() -> list[str]:
-    return [f"{c['id']} – {c['nome']}" for c in repo_cli.listar_clientes()]
-
-
-def _choices_destinos() -> list[str]:
-    return [f"{d['id']} – {d['nome']} ({d['pais']})" for d in repo_dst.listar_destinos()]
-
-
-def _extract_id(choice: str) -> int:
-    """Extrai o ID numérico da string 'id – Nome'."""
-    return int(choice.split(" – ")[0])
-
-
-# ──────────────────────────────────────────────────────────────────
-# Callbacks
-# ──────────────────────────────────────────────────────────────────
-
-def cb_criar_cliente(nome: str, email: str) -> str:
+def _get_clientes_choices() -> list[str]:
     try:
-        repo_cli.criar_cliente(nome.strip(), email.strip())
-        return "✓ Cliente cadastrado com sucesso."
-    except Exception as exc:
-        return f"✗ Erro: {exc}"
-
-
-def cb_criar_destino(nome: str, pais: str, preco: float | None) -> str:
-    try:
-        repo_dst.criar_destino(nome.strip(), pais.strip(), float(preco or 0))
-        return "✓ Destino cadastrado com sucesso."
-    except Exception as exc:
-        return f"✗ Erro: {exc}"
-
-
-def cb_criar_venda(cliente_choice: str, destino_choice: str, data_viagem: str) -> str:
-    try:
-        cliente_id = _extract_id(cliente_choice)
-        destino_id = _extract_id(destino_choice)
-        repo_ven.criar_venda(cliente_id, destino_id, data_viagem.strip())
-        nome_cli = cliente_choice.split(" – ", 1)[1] if " – " in cliente_choice else cliente_choice
-        nome_dst = destino_choice.split(" – ", 1)[1] if " – " in destino_choice else destino_choice
-        return f"✓ Venda registrada para {nome_cli} → {nome_dst}."
-    except Exception as exc:
-        return f"✗ Erro: cliente ou destino inválido. ({exc})"
-
-
-def cb_criar_comentario(cliente_choice: str, destino_choice: str, texto: str) -> str:
-    try:
-        cliente_id = _extract_id(cliente_choice)
-        destino_id = _extract_id(destino_choice)
-        repo_com.criar_comentario(cliente_id, destino_id, texto.strip())
-        return "✓ Comentário enviado com sucesso."
-    except Exception as exc:
-        return f"✗ Erro: {exc}"
-
-
-def cb_listar_comentarios():
-    comentarios = repo_com.listar_comentarios()
-    if not comentarios:
+        items = repo_cli.listar_clientes()
+        return [f"{c['id']} – {c['nome']} ({c['email']})" for c in items]
+    except Exception:
         return []
-    # Enriquecer com nomes via repositório de clientes/destinos
-    clientes_map = {c["id"]: c["nome"] for c in repo_cli.listar_clientes()}
-    destinos_map = {d["id"]: d["nome"] for d in repo_dst.listar_destinos()}
-    rows = []
-    for c in comentarios:
-        rows.append(
+
+
+def _get_destinos_choices() -> list[str]:
+    try:
+        items = repo_dst.listar_destinos()
+        return [
+            f"{d['id']} – {d['nome']} - {d['pais']} (R$ {float(d.get('preco', 0)):.2f})"
+            for d in items
+        ]
+    except Exception:
+        return []
+
+
+def _extract_id(choice: str | None) -> int | None:
+    if not choice:
+        return None
+    try:
+        return int(choice.split(" – ")[0].strip())
+    except (ValueError, IndexError):
+        return None
+
+
+def _load_clientes_df() -> pd.DataFrame:
+    try:
+        items = repo_cli.listar_clientes()
+        if not items:
+            return pd.DataFrame(columns=["ID", "Nome", "E-mail"])
+        return pd.DataFrame([{"ID": c["id"], "Nome": c["nome"], "E-mail": c["email"]} for c in items])
+    except Exception as exc:
+        print(f"Erro ao listar clientes: {exc}")
+        return pd.DataFrame(columns=["ID", "Nome", "E-mail"])
+
+
+def _load_destinos_df() -> pd.DataFrame:
+    try:
+        items = repo_dst.listar_destinos()
+        if not items:
+            return pd.DataFrame(columns=["ID", "Destino", "País", "Preço"])
+        return pd.DataFrame([
             {
-                "Cliente": clientes_map.get(c["cliente_id"], str(c["cliente_id"])),
-                "Destino": destinos_map.get(c["destino_id"], str(c["destino_id"])),
-                "Comentário": c["texto"],
-                "Data": c["data"],
+                "ID": d["id"],
+                "Destino": d["nome"],
+                "País": d["pais"],
+                "Preço": f"R$ {float(d.get('preco', 0)):.2f}",
             }
-        )
-    return rows
+            for d in items
+        ])
+    except Exception as exc:
+        print(f"Erro ao listar destinos: {exc}")
+        return pd.DataFrame(columns=["ID", "Destino", "País", "Preço"])
+
+
+def _load_vendas_df() -> pd.DataFrame:
+    try:
+        items = repo_ven.listar_vendas()
+        if not items:
+            return pd.DataFrame(columns=["ID", "Cliente", "Destino", "Data da Viagem"])
+        return pd.DataFrame([
+            {
+                "ID": v["id"],
+                "Cliente": v.get("nome_cliente", ""),
+                "Destino": v.get("nome_destino", ""),
+                "Data da Viagem": v.get("data_viagem", ""),
+            }
+            for v in items
+        ])
+    except Exception as exc:
+        print(f"Erro ao listar vendas: {exc}")
+        return pd.DataFrame(columns=["ID", "Cliente", "Destino", "Data da Viagem"])
+
+
+def _load_comentarios_df() -> pd.DataFrame:
+    try:
+        comentarios = repo_com.listar_comentarios()
+        if not comentarios:
+            return pd.DataFrame(columns=["Data/Hora", "Cliente", "Destino", "Comentário"])
+        clientes_map = {c["id"]: c["nome"] for c in repo_cli.listar_clientes()}
+        destinos_map = {d["id"]: f"{d['nome']} ({d['pais']})" for d in repo_dst.listar_destinos()}
+        rows = []
+        for c in comentarios:
+            cli_nome = clientes_map.get(c["cliente_id"], f"Cliente #{c['cliente_id']}")
+            dst_nome = destinos_map.get(c["destino_id"], f"Destino #{c['destino_id']}")
+            rows.append({
+                "Data/Hora": c.get("data", ""),
+                "Cliente": cli_nome,
+                "Destino": dst_nome,
+                "Comentário": c.get("texto", ""),
+            })
+        return pd.DataFrame(rows)
+    except Exception as exc:
+        print(f"Erro ao listar comentários: {exc}")
+        return pd.DataFrame(columns=["Data/Hora", "Cliente", "Destino", "Comentário"])
+
+
+def _update_dataframe(dataframe: pd.DataFrame) -> gr.Dataframe:
+    """Reconstrói a tabela com a quantidade correta de linhas após cada cadastro."""
+    return gr.Dataframe(
+        value=dataframe,
+        headers=list(dataframe.columns),
+        row_count=(max(len(dataframe.index), 1), "fixed"),
+        interactive=False,
+        wrap=True,
+        key=f"table-{uuid4().hex}",
+    )
 
 
 # ──────────────────────────────────────────────────────────────────
-# Interface
+# Actions / Callbacks
 # ──────────────────────────────────────────────────────────────────
 
-with gr.Blocks(css=CUSTOM_CSS, title="Agência de Viagens") as demo:
+def handle_cadastrar_cliente(nome: str, email: str):
+    if not nome or not nome.strip():
+        gr.Warning("Por favor, informe o nome do cliente.")
+        return "", "", _update_dataframe(_load_clientes_df())
+    if not email or not email.strip():
+        gr.Warning("Por favor, informe o e-mail do cliente.")
+        return nome, "", _update_dataframe(_load_clientes_df())
 
-    # ── Faixa topo ──
-    gr.HTML('<div id="header-strip">FROM: VOCÊ &nbsp;✈&nbsp; TO: QUALQUER LUGAR</div>')
+    try:
+        novo = repo_cli.criar_cliente(nome.strip(), email.strip())
+        gr.Info(f"Cliente '{novo.get('nome', nome.strip())}' (ID #{novo.get('id')}) cadastrado com sucesso!")
+        return "", "", _update_dataframe(_load_clientes_df())
+    except Exception as exc:
+        gr.Error(f"Erro ao cadastrar cliente: {exc}")
+        return nome, email, _update_dataframe(_load_clientes_df())
 
-    with gr.Tabs():
 
-        # ────────────── ABA CLIENTES ──────────────
-        with gr.Tab("Clientes"):
+def handle_cadastrar_destino(nome: str, pais: str, preco: float | None):
+    if not nome or not nome.strip():
+        gr.Warning("Por favor, informe o nome do destino.")
+        return "", "", preco, _update_dataframe(_load_destinos_df())
+    if not pais or not pais.strip():
+        gr.Warning("Por favor, informe o país.")
+        return nome, "", preco, _update_dataframe(_load_destinos_df())
+    if preco is None or preco < 0:
+        gr.Warning("Informe um preço válido (maior ou igual a 0).")
+        return nome, pais, 0.0, _update_dataframe(_load_destinos_df())
+
+    try:
+        novo = repo_dst.criar_destino(nome.strip(), pais.strip(), float(preco))
+        gr.Info(f"Destino '{novo.get('nome', nome.strip())}' (ID #{novo.get('id')}) cadastrado com sucesso!")
+        return "", "", 0.0, _update_dataframe(_load_destinos_df())
+    except Exception as exc:
+        gr.Error(f"Erro ao cadastrar destino: {exc}")
+        return nome, pais, preco, _update_dataframe(_load_destinos_df())
+
+
+def handle_registrar_venda(cliente_choice: str | None, destino_choice: str | None, data_viagem: str):
+    cli_id = _extract_id(cliente_choice)
+    dst_id = _extract_id(destino_choice)
+    if not cli_id:
+        gr.Warning("Selecione um cliente para a venda.")
+        return _update_dataframe(_load_vendas_df())
+    if not dst_id:
+        gr.Warning("Selecione um destino para a venda.")
+        return _update_dataframe(_load_vendas_df())
+    if not data_viagem or not data_viagem.strip():
+        gr.Warning("Informe a data da viagem.")
+        return _update_dataframe(_load_vendas_df())
+
+    try:
+        nova = repo_ven.criar_venda(cli_id, dst_id, data_viagem.strip())
+        gr.Info(f"Venda (ID #{nova.get('id')}) registrada com sucesso!")
+        return _update_dataframe(_load_vendas_df())
+    except Exception as exc:
+        gr.Error(f"Erro ao registrar venda: {exc}")
+        return _update_dataframe(_load_vendas_df())
+
+
+def handle_enviar_comentario(cliente_choice: str | None, destino_choice: str | None, texto: str):
+    cli_id = _extract_id(cliente_choice)
+    dst_id = _extract_id(destino_choice)
+    if not cli_id:
+        gr.Warning("Selecione quem está avaliando.")
+        return texto, _update_dataframe(_load_comentarios_df())
+    if not dst_id:
+        gr.Warning("Selecione o destino avaliado.")
+        return texto, _update_dataframe(_load_comentarios_df())
+    if not texto or not texto.strip():
+        gr.Warning("Digite o texto do seu comentário.")
+        return texto, _update_dataframe(_load_comentarios_df())
+
+    try:
+        repo_com.criar_comentario(cli_id, dst_id, texto.strip())
+        gr.Info("Comentário salvo com sucesso!")
+        return "", _update_dataframe(_load_comentarios_df())
+    except Exception as exc:
+        gr.Error(f"Erro ao salvar comentário: {exc}")
+        return texto, _update_dataframe(_load_comentarios_df())
+
+
+def refresh_vendas_tab():
+    return gr.Dropdown(choices=_get_clientes_choices()), gr.Dropdown(choices=_get_destinos_choices()), _load_vendas_df()
+
+
+def refresh_comentarios_tab():
+    return gr.Dropdown(choices=_get_clientes_choices()), gr.Dropdown(choices=_get_destinos_choices()), _load_comentarios_df()
+
+
+# ──────────────────────────────────────────────────────────────────
+# UI Layout
+# ──────────────────────────────────────────────────────────────────
+
+theme = gr.themes.Soft(
+    primary_hue="sky",
+    secondary_hue="slate",
+    neutral_hue="slate",
+)
+
+with gr.Blocks(title="Agência de Viagens — Portal Web") as demo:
+
+    with gr.Row():
+        with gr.Column():
+            gr.Markdown(
+                """
+                # ✈️ Agência de Viagens
+                **Portal Unificado de Cadastro e Avaliações** · *DB Relacional + NoSQL*
+                """
+            )
+
+    with gr.Tabs() as tabs:
+
+        # ────────────── TAB 1: CLIENTES ──────────────
+        with gr.Tab("👤 Clientes", id="tab_clientes"):
             with gr.Row():
-                with gr.Column(scale=4):
-                    cli_nome  = gr.Textbox(label="Nome do viajante",   placeholder="ex: Maria Silva")
-                    cli_email = gr.Textbox(label="E-mail de contato",  placeholder="ex: maria@email.com")
-                    btn_cli   = gr.Button("Cadastrar Cliente", variant="primary", elem_id="btn-cad-cliente")
-                with gr.Column(scale=6):
-                    cli_status = gr.Textbox(label="Status", interactive=False, show_label=False)
+                with gr.Column(scale=1):
+                    with gr.Group():
+                        gr.Markdown("### ➕ Novo Cliente")
+                        cli_nome = gr.Textbox(
+                            label="Nome Completo",
+                            placeholder="ex: Maria Eduarda Silva",
+                        )
+                        cli_email = gr.Textbox(
+                            label="E-mail",
+                            placeholder="ex: maria@email.com",
+                        )
+                        btn_cad_cli = gr.Button("Cadastrar Cliente", variant="primary")
 
-            btn_cli.click(cb_criar_cliente, inputs=[cli_nome, cli_email], outputs=cli_status)
+                with gr.Column(scale=2):
+                    with gr.Group():
+                        with gr.Row():
+                            gr.Markdown("### 📋 Clientes Cadastrados (DB Relacional)")
+                            btn_refresh_cli = gr.Button("🔄 Atualizar", size="sm", variant="secondary")
+                        cli_table = gr.Dataframe(
+                            headers=["ID", "Nome", "E-mail"],
+                            value=_load_clientes_df,
+                            wrap=True,
+                        )
 
-        # ────────────── ABA DESTINOS ──────────────
-        with gr.Tab("Destinos"):
+        # ────────────── TAB 2: DESTINOS ──────────────
+        with gr.Tab("📍 Destinos", id="tab_destinos"):
             with gr.Row():
-                with gr.Column(scale=4):
-                    dst_nome  = gr.Textbox(label="Nome do destino", placeholder="ex: Lisboa")
-                    dst_pais  = gr.Textbox(label="País",            placeholder="ex: Portugal")
-                    dst_preco = gr.Number( label="Preço (R$)",      minimum=0, precision=2)
-                    btn_dst   = gr.Button("Cadastrar Destino", variant="primary", elem_id="btn-cad-destino")
-                with gr.Column(scale=6):
-                    dst_status = gr.Textbox(label="Status", interactive=False, show_label=False)
+                with gr.Column(scale=1):
+                    with gr.Group():
+                        gr.Markdown("### ➕ Novo Destino")
+                        dst_nome = gr.Textbox(
+                            label="Destino / Cidade",
+                            placeholder="ex: Fernando de Noronha",
+                        )
+                        dst_pais = gr.Textbox(
+                            label="País",
+                            placeholder="ex: Brasil",
+                        )
+                        dst_preco = gr.Number(
+                            label="Preço do Pacote (R$)",
+                            minimum=0,
+                            precision=2,
+                            value=1500.0,
+                        )
+                        btn_cad_dst = gr.Button("Cadastrar Destino", variant="primary")
 
-            btn_dst.click(cb_criar_destino, inputs=[dst_nome, dst_pais, dst_preco], outputs=dst_status)
+                with gr.Column(scale=2):
+                    with gr.Group():
+                        with gr.Row():
+                            gr.Markdown("### 📋 Destinos Cadastrados (DB Relacional)")
+                            btn_refresh_dst = gr.Button("🔄 Atualizar", size="sm", variant="secondary")
+                        dst_table = gr.Dataframe(
+                            headers=["ID", "Destino", "País", "Preço"],
+                            value=_load_destinos_df,
+                            wrap=True,
+                        )
 
-        # ────────────── ABA VENDAS ──────────────
-        with gr.Tab("Vendas"):
+        # ────────────── TAB 3: VENDAS ──────────────
+        with gr.Tab("🎫 Vendas", id="tab_vendas") as tab_vendas:
             with gr.Row():
-                with gr.Column(scale=4):
-                    ven_cliente = gr.Dropdown(
-                        label="Cliente",
-                        choices=_choices_clientes(),
-                        allow_custom_value=False,
-                    )
-                    ven_destino = gr.Dropdown(
-                        label="Destino",
-                        choices=_choices_destinos(),
-                        allow_custom_value=False,
-                    )
-                    ven_data = gr.Textbox(label="Data da viagem", placeholder="AAAA-MM-DD")
-                    btn_ven  = gr.Button("Registrar Venda", variant="primary", elem_id="btn-reg-venda")
-                with gr.Column(scale=6):
-                    ven_status = gr.Textbox(label="Status", interactive=False, show_label=False)
+                with gr.Column(scale=1):
+                    with gr.Group():
+                        gr.Markdown("### ➕ Registrar Nova Venda")
+                        ven_cli_dropdown = gr.Dropdown(
+                            label="Selecione o Cliente",
+                            choices=_get_clientes_choices(),
+                            interactive=True,
+                        )
+                        ven_dst_dropdown = gr.Dropdown(
+                            label="Selecione o Destino",
+                            choices=_get_destinos_choices(),
+                            interactive=True,
+                        )
+                        ven_data = gr.Textbox(
+                            label="Data da Viagem (AAAA-MM-DD)",
+                            value=date.today().isoformat(),
+                            placeholder="ex: 2026-12-25",
+                        )
+                        btn_cad_ven = gr.Button("Registrar Venda", variant="primary")
 
-            btn_ven.click(cb_criar_venda, inputs=[ven_cliente, ven_destino, ven_data], outputs=ven_status)
+                with gr.Column(scale=2):
+                    with gr.Group():
+                        with gr.Row():
+                            gr.Markdown("### 📋 Histórico de Vendas (DB Relacional)")
+                            btn_refresh_ven = gr.Button("🔄 Atualizar", size="sm", variant="secondary")
+                        ven_table = gr.Dataframe(
+                            headers=["ID", "Cliente", "Destino", "Data da Viagem"],
+                            value=_load_vendas_df,
+                            wrap=True,
+                        )
 
-        # ────────────── ABA COMENTÁRIOS ──────────────
-        with gr.Tab("Comentários"):
+        # ────────────── TAB 4: COMENTÁRIOS ──────────────
+        with gr.Tab("💬 Avaliações (NoSQL)", id="tab_comentarios") as tab_comentarios:
             with gr.Row():
-                with gr.Column(scale=4):
-                    com_cliente = gr.Dropdown(
-                        label="Quem está avaliando?",
-                        choices=_choices_clientes(),
-                        allow_custom_value=False,
-                    )
-                    com_destino = gr.Dropdown(
-                        label="Destino visitado",
-                        choices=_choices_destinos(),
-                        allow_custom_value=False,
-                    )
-                    com_texto  = gr.Textbox(
-                        label="Sua avaliação",
-                        lines=4,
-                        max_lines=8,
-                        placeholder="Conte como foi a viagem...",
-                    )
-                    btn_com    = gr.Button("Enviar Comentário", variant="primary", elem_id="btn-enviar-com")
-                    com_status = gr.Textbox(label="Status", interactive=False, show_label=False)
+                with gr.Column(scale=1):
+                    with gr.Group():
+                        gr.Markdown("### ✍️ Enviar Avaliação de Viagem")
+                        com_cli_dropdown = gr.Dropdown(
+                            label="Viajante",
+                            choices=_get_clientes_choices(),
+                            interactive=True,
+                        )
+                        com_dst_dropdown = gr.Dropdown(
+                            label="Destino Avaliado",
+                            choices=_get_destinos_choices(),
+                            interactive=True,
+                        )
+                        com_texto = gr.Textbox(
+                            label="Comentário sobre a experiência",
+                            placeholder="Conte os pontos fortes da viagem, hospedagem, passeios...",
+                            lines=4,
+                        )
+                        btn_cad_com = gr.Button("Salvar Avaliação", variant="primary")
 
-                with gr.Column(scale=6):
-                    btn_ver = gr.Button("Ver Todos os Comentários", variant="secondary", elem_id="btn-ver-comentarios")
-                    com_tabela = gr.Dataframe(
-                        headers=["Cliente", "Destino", "Comentário", "Data"],
-                        datatype=["str", "str", "str", "str"],
-                        interactive=False,
-                        label="Comentários",
-                    )
+                with gr.Column(scale=2):
+                    with gr.Group():
+                        with gr.Row():
+                            gr.Markdown("### 💬 Mural de Avaliações (NoSQL)")
+                            btn_refresh_com = gr.Button("🔄 Atualizar", size="sm", variant="secondary")
+                        com_table = gr.Dataframe(
+                            headers=["Data/Hora", "Cliente", "Destino", "Comentário"],
+                            value=_load_comentarios_df,
+                            wrap=True,
+                        )
 
-            btn_com.click(cb_criar_comentario, inputs=[com_cliente, com_destino, com_texto], outputs=com_status)
-            btn_ver.click(cb_listar_comentarios, inputs=[], outputs=com_tabela)
+    # ──────────────────────────────────────────────────────────────
+    # Event Bindings
+    # ──────────────────────────────────────────────────────────────
+
+    # Cadastrar Cliente
+    btn_cad_cli.click(
+        fn=handle_cadastrar_cliente,
+        inputs=[cli_nome, cli_email],
+        outputs=[cli_nome, cli_email, cli_table],
+    )
+    btn_refresh_cli.click(fn=_load_clientes_df, outputs=[cli_table])
+
+    # Cadastrar Destino
+    btn_cad_dst.click(
+        fn=handle_cadastrar_destino,
+        inputs=[dst_nome, dst_pais, dst_preco],
+        outputs=[dst_nome, dst_pais, dst_preco, dst_table],
+    )
+    btn_refresh_dst.click(fn=_load_destinos_df, outputs=[dst_table])
+
+    # Registrar Venda
+    btn_cad_ven.click(
+        fn=handle_registrar_venda,
+        inputs=[ven_cli_dropdown, ven_dst_dropdown, ven_data],
+        outputs=[ven_table],
+    )
+    btn_refresh_ven.click(fn=_load_vendas_df, outputs=[ven_table])
+
+    # Enviar Comentário
+    btn_cad_com.click(
+        fn=handle_enviar_comentario,
+        inputs=[com_cli_dropdown, com_dst_dropdown, com_texto],
+        outputs=[com_texto, com_table],
+    )
+    btn_refresh_com.click(fn=_load_comentarios_df, outputs=[com_table])
+
+    # Tab selection auto-refresh
+    tab_vendas.select(
+        fn=refresh_vendas_tab,
+        outputs=[ven_cli_dropdown, ven_dst_dropdown, ven_table],
+    )
+    tab_comentarios.select(
+        fn=refresh_comentarios_tab,
+        outputs=[com_cli_dropdown, com_dst_dropdown, com_table],
+    )
 
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=theme)

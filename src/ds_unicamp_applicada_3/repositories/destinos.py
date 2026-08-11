@@ -19,7 +19,7 @@ def criar_destino(nome: str, pais: str, preco: float) -> dict:
 def listar_destinos() -> list[dict]:
     """Retorna todos os destinos cadastrados."""
     client = get_supabase_client()
-    response = client.table("destinos").select("*").execute()
+    response = client.table("destinos").select("*").order("id", desc=True).execute()
     return response.data
 
 

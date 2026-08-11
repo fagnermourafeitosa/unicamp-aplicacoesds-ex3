@@ -15,7 +15,7 @@ def criar_cliente(nome: str, email: str) -> dict:
 def listar_clientes() -> list[dict]:
     """Retorna todos os clientes cadastrados."""
     client = get_supabase_client()
-    response = client.table("clientes").select("*").execute()
+    response = client.table("clientes").select("*").order("id", desc=True).execute()
     return response.data
 
 

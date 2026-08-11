@@ -28,6 +28,7 @@ def listar_vendas() -> list[dict]:
     response = (
         client.table("vendas")
         .select("id, data_viagem, clientes(nome), destinos(nome)")
+        .order("id", desc=True)
         .execute()
     )
     result = []

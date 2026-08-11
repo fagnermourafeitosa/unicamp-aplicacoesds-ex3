@@ -26,7 +26,7 @@ def criar_comentario(cliente_id: int, destino_id: int, texto: str) -> dict:
 def listar_comentarios() -> list[dict]:
     """Retorna todos os comentários com data formatada como 'DD/MM/AAAA HH:MM'."""
     db = get_mongo_db()
-    docs = list(db[_COLLECTION].find())
+    docs = list(db[_COLLECTION].find().sort("data", -1))
     result = []
     for doc in docs:
         data = doc.get("data")
