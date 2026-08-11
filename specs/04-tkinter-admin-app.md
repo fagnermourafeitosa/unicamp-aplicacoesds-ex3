@@ -37,6 +37,191 @@ Construir uma aplicação desktop com Tkinter que conecta ao mesmo Supabase da a
 - A aplicação será iniciada com `root.mainloop()`.
 - Tkinter é biblioteca padrão do Python — nenhuma dependência adicional necessária.
 
+## Design Visual
+
+> Aplicado seguindo a skill `frontend-design`. Tkinter não suporta CSS — as decisões de cor e tipografia são aplicadas via `ttk.Style` e opções de widget. A paleta é compartilhada com o Gradio para coerência sistêmica entre as duas interfaces do mesmo produto.
+
+### Paleta de Cores
+
+| Nome | Hex | Uso no Tkinter |
+|---|---|---|
+| Azul Noite | `#0D1B2A` | `background` da janela principal, fundo dos `Entry` |
+| Azul Oceano | `#1B4965` | Fundo dos `ttk.Frame` de aba, fundo do `ttk.Notebook` |
+| Azul Céu | `#5FA8D3` | `selectbackground` da Treeview, highlight de botão hover |
+| Névoa de Altitude | `#CAE9FF` | `foreground` (texto) de Labels e Treeview |
+| Âmbar Cartão de Embarque | `#E9C46A` | `background` dos botões primários (Cadastrar, Atualizar) |
+| Vermelho de Alerta | `#C0392B` | `background` do botão Excluir |
+
+### Tipografia
+
+- **Labels e botões:** `('Inter', 11)` — ou `('Segoe UI', 11)` no Windows como fallback system sans-serif.
+- **Título da janela:** `('Inter', 13, 'bold')` no `Label` de cabeçalho.
+- **Treeview (dados):** `('Courier New', 10)` — monoespaçado para alinhar colunas de dados.
+- **Mensagens de status:** `('Inter', 11, 'italic')`.
+
+### Configuração via ttk.Style
+
+```
+style = ttk.Style()
+style.theme_use('clam')               # base mais controlável que 'default'
+
+style.configure('TFrame',            background='#1B4965')
+style.configure('TNotebook',         background='#0D1B2A', borderwidth=0)
+style.configure('TNotebook.Tab',     background='#0D1B2A', foreground='#CAE9FF',
+                                     padding=[12, 6], font=('Inter', 11))
+style.map('TNotebook.Tab',           background=[('selected', '#1B4965')],
+                                     foreground=[('selected', '#E9C46A')])
+
+style.configure('TLabel',            background='#1B4965', foreground='#CAE9FF',
+                                     font=('Inter', 11))
+style.configure('TEntry',            fieldbackground='#0D1B2A', foreground='#CAE9FF',
+                                     insertcolor='#CAE9FF', borderwidth=1, relief='flat')
+style.configure('TCombobox',         fieldbackground='#0D1B2A', foreground='#CAE9FF')
+
+style.configure('Primary.TButton',   background='#E9C46A', foreground='#0D1B2A',
+                                     font=('Inter', 11, 'bold'), relief='flat', padding=[8, 6])
+style.map('Primary.TButton',         background=[('active', '#d4b05a')])
+
+style.configure('Secondary.TButton', background='#1B4965', foreground='#CAE9FF',
+                                     font=('Inter', 11), relief='flat', padding=[8, 6])
+style.map('Secondary.TButton',       background=[('active', '#5FA8D3')])
+
+style.configure('Danger.TButton',    background='#C0392B', foreground='#FFFFFF',
+                                     font=('Inter', 11, 'bold'), relief='flat', padding=[8, 6])
+style.map('Danger.TButton',          background=[('active', '#a93226')])
+
+style.configure('Treeview',          background='#0D1B2A', foreground='#CAE9FF',
+                                     fieldbackground='#0D1B2A', rowheight=28,
+                                     font=('Courier New', 10))
+style.configure('Treeview.Heading',  background='#1B4965', foreground='#E9C46A',
+                                     font=('Inter', 11, 'bold'), relief='flat')
+style.map('Treeview',                background=[('selected', '#5FA8D3')],
+                                     foreground=[('selected', '#0D1B2A')])
+```
+
+### Wireframe — Janela Principal
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  ● ○ ○   Agência de Viagens — Painel Administrativo           │  ← title da janela
+├──────────────────────────────────────────────────────────────────┤
+│  BARRA HEADER  bg #0D1B2A, padding 12px                         │
+│  Label: "Painel Administrativo"  font bold 13px #E9C46A         │
+├──────────────────────────────────────────────────────────────────┤
+│  ttk.Notebook                                                   │
+│  [  Clientes  ]  [  Destinos  ]  [  Vendas  ]                   │
+│  ↓ aba ativa: text #E9C46A, bg #1B4965                         │
+│  ↓ aba inativa: text #CAE9FF opacity, bg #0D1B2A               │
+├──────────────────────────────────────────────────────────────────┤
+│  CONTEÚDO DA ABA (ttk.Frame bg #1B4965, padx=16 pady=12)        │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  FORMULÁRIO (grid 2 colunas: labels + entries)                │  │
+│  │  + BARRA DE BOTÕES (Cadastrar | Atualizar | Excluir | Limpar)│  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│  LABEL DE STATUS  font italic 11px  |│  ← sucesso: #5FA8D3 / erro: #E9C46A  │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  ttk.Treeview (expand=True, fill=BOTH) + Scrollbar vertical │  │
+│  │  [  Atualizar Lista  ]  botão secundário abaixo da Treeview  │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Wireframe — Aba Clientes
+
+```
+FORMULÁRIO (grid, padx=8, pady=4)
+──────────────────────────────────
+Label ["ID"]          Entry [width=8, state=readonly]   ← preenchido ao selecionar item
+Label ["Nome"]        Entry [width=32]                  ← editavel
+Label ["E-mail"]      Entry [width=32]
+
+BARA DE BOTÕES (pack, side=LEFT, padx=4)
+──────────────────────────────────
+[ Cadastrar Cliente ]   style=Primary.TButton
+[ Atualizar Dados ]     style=Primary.TButton  (desabilitado até selecionar item)
+[ Excluir ]             style=Danger.TButton   (desabilitado até selecionar item)
+[ Limpar Campos ]       style=Secondary.TButton
+
+STATUS LABEL
+──────────────────────────────────
+• Vazio até a primeira ação
+• Sucesso: "✓ Cliente cadastrado com sucesso."   fg=#5FA8D3
+• Sucesso update: "✓ Dados atualizados."          fg=#5FA8D3
+• Sucesso delete: "✓ Cliente removido."           fg=#5FA8D3
+• Erro: "✗ Erro: [mensagem]"                      fg=#E9C46A
+
+TREEVIEW  (columns=["ID", "Nome", "E-mail"], show='headings')
+──────────────────────────────────
+  ID   | Nome                 | E-mail
+  1    | Maria Silva          | maria@email.com
+  2    | João Santos          | joao@email.com
+
+[  Atualizar Lista  ]     style=Secondary.TButton, abaixo da Treeview
+
+SELEÇÃO DE ITEM (<<TreeviewSelect>>)
+──────────────────────────────────
+• Preenche os Entry com os valores do registro selecionado
+• Habilita os botões "Atualizar Dados" e "Excluir"
+• Deselecionar (clicar em área vazia) ou "Limpar Campos":
+  volta ao estado inicial, botões desabilitados novamente
+```
+
+### Wireframe — Aba Destinos
+
+```
+FORMULÁRIO
+──────────────────────────────────
+Label ["ID"]     Entry [readonly]
+Label ["Nome"]   Entry [width=32]     ex: "Lisboa"
+Label ["País"]  Entry [width=24]     ex: "Portugal"
+Label ["Preço"] Entry [width=12]     aceita float  ex: "3500.00"
+
+BOTÕES: [ Cadastrar Destino ] [ Atualizar Dados ] [ Excluir ] [ Limpar Campos ]
+Mesmo padrão de estilo e habilitação da aba Clientes.
+
+TREEVIEW  (columns=["ID", "Nome", "País", "Preço (R$)"])
+  ID | Nome     | País     | Preço (R$)
+  1  | Lisboa   | Portugal  | 3.500,00
+  2  | Paris    | França    | 5.200,00
+```
+
+### Wireframe — Aba Vendas
+
+```
+FORMULÁRIO
+──────────────────────────────────
+Label ["ID"]           Entry [readonly]
+Label ["Cliente"]      Combobox [values=["1 – Maria Silva", "2 – João Santos"]]
+                       Largura: 32 • Seleção extrai o ID (parte antes de ' – ')
+Label ["Destino"]      Combobox [values=["1 – Lisboa (Portugal)", "2 – Paris (França)"]]
+Label ["Data Viagem"]  Entry [width=14, placeholder: "AAAA-MM-DD"]
+
+BOTÕES: [ Registrar Venda ] [ Atualizar Dados ] [ Excluir ] [ Limpar Campos ]
+• "Registrar Venda" = Primary; "Excluir" = Danger; demais = Secondary
+• Comboboxes são populados ao abrir a aba (chamada aos repositórios)
+
+TREEVIEW  (columns=["ID", "Cliente", "Destino", "Data"])
+  ID | Cliente      | Destino  | Data
+  1  | Maria Silva  | Lisboa   | 2025-03-15
+```
+
+### Regras de copy dos componentes
+
+| Elemento | Texto |
+|---|---|
+| Botão criar — Clientes | "Cadastrar Cliente" |
+| Botão criar — Destinos | "Cadastrar Destino" |
+| Botão criar — Vendas | "Registrar Venda" |
+| Botão atualizar (todas as abas) | "Atualizar Dados" |
+| Botão excluir (todas as abas) | "Excluir" |
+| Botão limpar | "Limpar Campos" |
+| Botão reload da Treeview | "Atualizar Lista" |
+| Diálogo de confirmação | "Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita." |
+| Sucesso — cadastro | "✓ [Entidade] cadastrado(a) com sucesso." |
+| Sucesso — atualização | "✓ Dados atualizados." |
+| Sucesso — exclusão | "✓ Registro removido." |
+| Erro genérico | "✗ Erro: [mensagem técnica direta]" |
+
 ## Testing Decisions
 
 - Testes automatizados de UI Tkinter são incomuns e de alto custo; o foco estará nos repositórios (Spec 02).
