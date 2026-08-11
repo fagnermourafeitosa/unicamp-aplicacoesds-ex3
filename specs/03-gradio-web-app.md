@@ -15,14 +15,15 @@ Construir uma aplicação web com Gradio que apresenta um formulário por entida
 3. Como usuário da agência, quero selecionar um cliente, um destino e uma data de viagem, e clicar em "Registrar Venda", para que a venda fique associada no sistema.
 4. Como cliente pós-viagem, quero selecionar meu nome e o destino visitado, escrever um comentário em texto livre e clicar em "Enviar Comentário", para que minha avaliação seja salva no MongoDB.
 5. Como usuário, quero clicar em "Ver Comentários" e visualizar uma tabela com todos os comentários já cadastrados (incluindo nome do cliente, destino e texto), para acompanhar as avaliações dos clientes.
-6. Como usuário, quero receber uma mensagem de confirmação de sucesso (ou de erro) após cada operação de cadastro, para saber se a ação foi concluída.
-7. Como usuário, quero que os dropdowns de seleção de cliente e destino (nas abas de venda e comentário) sejam preenchidos dinamicamente a partir dos dados já cadastrados no Supabase, para não precisar digitar IDs manualmente.
+6. Como usuário, quero poder percorrer o fluxo completo — cadastrar um cliente → cadastrar um destino → registrar uma venda vinculando cliente + destino + data → escrever um comentário sobre a viagem → visualizar os comentários — sem sair da mesma interface, para que o processo seja contínuo e sem fricção.
+7. Como usuário, quero receber uma mensagem de confirmação de sucesso (ou de erro) após cada operação de cadastro, para saber se a ação foi concluída.
+8. Como usuário, quero que os dropdowns de seleção de cliente e destino (nas abas de venda e comentário) sejam preenchidos dinamicamente a partir dos dados já cadastrados no Supabase, para não precisar digitar IDs manualmente.
 
 ## Implementation Decisions
 
 - O ponto de entrada da aplicação Gradio será `src/ds_unicamp_applicada_3/app_gradio.py`.
 - A interface utilizará `gr.Blocks` com abas (`gr.Tab`) para separar as seções: "Clientes", "Destinos", "Vendas" e "Comentários".
-- Cada aba conterá um `gr.Form` (ou grupo de `gr.Textbox` / `gr.Dropdown` / `gr.DatePicker`) e um `gr.Button`.
+- Cada aba conterá um `gr.Column` (ou `gr.Group`) agrupando os campos `gr.Textbox` / `gr.Dropdown` e um `gr.Button`. **Nota:** `gr.Form` não é um componente Gradio válido — usar `gr.Column` ou `gr.Group` para agrupar campos relacionados.
 - Os dropdowns de cliente e destino serão populados no carregamento via `gr.Dropdown(choices=listar_clientes())` — sem update dinâmico em tempo real para simplificar.
 - As funções de callback dos botões chamarão diretamente os repositórios da Spec 02 (sem lógica de negócio própria).
 - A aba "Comentários" terá um `gr.Dataframe` ou `gr.HTML` para exibir os comentários retornados por `listar_comentarios()`.
@@ -153,7 +154,7 @@ Label: "Destino"
 Dropdown: gr.Dropdown              choices=listar_destinos() → ["id – Nome (País)"]
 Label: "Data da viagem"
 Input: gr.Textbox                  placeholder: "AAAA-MM-DD"
-                                   (gr.DatePicker se disponível na versão Gradio)
+                                   (padrão definitivo — não usar gr.DatePicker)
 
 [ Registrar Venda ]                mesmo estilo CTA âmbar
 

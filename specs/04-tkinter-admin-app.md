@@ -31,7 +31,7 @@ Construir uma aplicação desktop com Tkinter que conecta ao mesmo Supabase da a
   - Botões de ação: "Cadastrar", "Atualizar", "Excluir", "Limpar Campos" e "Atualizar Lista".
   - Área inferior: `ttk.Treeview` com colunas correspondentes às colunas da tabela, com scrollbar vertical.
 - A seleção de um item na Treeview (`<<TreeviewSelect>>`) dispara um evento que popula os campos do formulário automaticamente.
-- As abas de Vendas usarão `ttk.Combobox` (em vez de `ttk.Entry` puro) para os campos `cliente_id` e `destino_id`, exibindo nomes e carregando IDs internamente.
+- As abas de Vendas usarão `ttk.Combobox` (em vez de `ttk.Entry` puro) para os campos `cliente_id` e `destino_id`, exibindo nomes e carregando IDs internamente. O formato exibido no Combobox será `"<id> – <nome>"` (ex: `"1 – Maria Silva"`); a extração do ID numérico na submissão do formulário é feita via `int(valor.split(' – ')[0])`. Essa convenção deve ser consistente entre todos os Comboboxes da aplicação.
 - As funções de callback chamarão diretamente os repositórios da Spec 02 (sem lógica de negócio própria).
 - O estado do registro selecionado (ID) será mantido em uma variável de instância da classe ou em uma variável de closure do frame.
 - A aplicação será iniciada com `root.mainloop()`.
@@ -135,7 +135,7 @@ Label ["ID"]          Entry [width=8, state=readonly]   ← preenchido ao seleci
 Label ["Nome"]        Entry [width=32]                  ← editavel
 Label ["E-mail"]      Entry [width=32]
 
-BARA DE BOTÕES (pack, side=LEFT, padx=4)
+BARRA DE BOTÕES (pack, side=LEFT, padx=4)
 ──────────────────────────────────
 [ Cadastrar Cliente ]   style=Primary.TButton
 [ Atualizar Dados ]     style=Primary.TButton  (desabilitado até selecionar item)
@@ -244,7 +244,7 @@ TREEVIEW  (columns=["ID", "Cliente", "Destino", "Data"])
 - Gerenciamento de comentários MongoDB via interface Tkinter (somente leitura/escrita no Supabase).
 - Autenticação/login de administrador.
 - Exportação de dados (CSV, Excel, etc.).
-- Temas visuais avançados além do padrão `ttk`.
+- Temas nativos de terceiros (ttkthemes, etc.) — o estilo visual já está definido na seção Design Visual desta spec via `ttk.Style` nativo.
 
 ## Further Notes
 

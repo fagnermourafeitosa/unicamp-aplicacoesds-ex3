@@ -28,7 +28,9 @@ Criar módulos de repositório independentes de interface — um para cada entid
   - `repositories/comentarios.py` — Create + Read sobre a coleção `comentarios` no MongoDB
 - Cada função de repositório chama `get_supabase_client()` ou `get_mongo_db()` (da Spec 01) internamente; não recebe conexão como parâmetro.
 - As funções de listagem retornam listas de dicionários Python simples (não objetos ORM), para máxima compatibilidade com as duas interfaces.
-- A função `listar_vendas()` deve fazer join lógico (via chamadas adicionais ao Supabase ou usando PostgREST `select` com expansão de FK) para retornar nome do cliente e nome do destino junto com os dados da venda.
+- A função `listar_vendas()` **deve** retornar os campos `nome_cliente` e `nome_destino` já resolvidos (não apenas os IDs brutos `cliente_id` / `destino_id`) — tanto a Treeview do Tkinter quanto a exibição no Gradio dependem disso para renderizar nomes legíveis. A resolução pode ser feita via PostgREST `select` com expansão de FK (`destinos(nome)`) ou via chamadas adicionais ao Supabase; a escolha é de implementação, mas o resultado deve sempre incluir os nomes.
+- A função `listar_comentarios()` deve retornar o campo `data` como **string formatada** (`"DD/MM/AAAA HH:MM"`) — não como objeto `datetime` — para que o `gr.Dataframe` do Gradio renderize diretamente sem conversão adicional. O documento MongoDB armazena `datetime`, a conversão para string acontece no repositório.
+- A função `criar_comentario(cliente_id, destino_id, texto)` insere `data=datetime.utcnow()` automaticamente; o chamador não passa a data.
 - Erros de banco (conexão, constraint violation) devem ser deixados propagar como exceções nativas — o tratamento é responsabilidade das interfaces.
 
 ## Testing Decisions
